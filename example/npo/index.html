@@ -1,0 +1,111 @@
+<head>
+  <style> body { margin: 0; } </style>
+  <!-- <script src="https//unpkg.com/force-graph"></script> -->
+  <script src="https://unpkg.com/three"></script>
+  <script src="https://unpkg.com/three-spritetext"></script>
+  <script src="https://unpkg.com/3d-force-graph"></script>
+  <!-- <script src="https//unpkg.com/d3-octree"></script> -->
+  <script src="https://unpkg.com/d3-force-3d"></script>
+  <!--<script src="../../dist/3d-force-graph.js"></script>-->
+</head>
+
+<body>
+  <div id="3d-graph"></div>
+
+  <script>
+    const initData = {
+      nodes: [ {id: 0, size: nodeSizeById(0) } ],
+      links: []
+    };
+
+
+    const elem = document.getElementById("3d-graph");
+
+    var textureLoader = new THREE.TextureLoader()
+    var backgroundMap = textureLoader.load( "npo-logo.png");
+    // var spriteMap = textureLoader.load( "https://vignette.wikia.nocookie.net/fantendo/images/6/6e/Small-mario.png/revision/latest?cb=20120718024112" );
+    var spriteMaterial = new THREE.SpriteMaterial( {
+        map: backgroundMap,
+        color: 'white', //0xffffff,
+        //rotation: -Math.PI /4,
+        transparent: true
+      } );
+
+    function nodeSizeById(id) {
+      return (id + 1) * 23 % 50 ;
+    }
+
+    const Graph = ForceGraph3D()(elem)
+        .enableNodeDrag(false)
+        .onNodeHover(node => elem.style.cursor = node ? 'pointer' : null)
+        .onNodeClick(removeNode)
+        .graphData(initData)
+        .nodeVal(node => {
+          return node.size
+        })
+        .warmupTicks(20)
+        .nodeThreeObject(node => {
+          var size = node.size
+          const text = new SpriteText(node.id);
+          text.color = '#FFFFFF';
+          text.textHeight = Math.round(size/10) + 1;
+          text.position.set(0, -size * 0.75, 0);
+
+          var sprite = new THREE.Sprite( spriteMaterial );
+          sprite.scale.set(size, size, 1);
+          sprite.rotation.set(Math.PI / 4 , 0, 0);
+          var group = new THREE.Group();
+          group.add(text, sprite);
+          return group;
+        });
+
+    const linkForce = Graph
+      .d3Force('link')
+      .distance(link => link.distance);
+
+    // add nodes
+    setInterval(() => {
+      const { nodes, links } = Graph.graphData();
+      const newNode = {id: nodes.length, size: nodeSizeById(nodes.length)};
+      addNode(newNode);
+    }, 3000);
+
+
+    function addNode(node) {
+      const { nodes, links } = Graph.graphData();
+      // const id = nodes.length;
+      Graph.graphData({
+        nodes: [...nodes, { id: node.id , size: node.size}],
+        links: [...links, { source: node.id, target: Math.round(Math.random() * (node.id-2) + 1), distance: (Math.random() * 10 + 1) + node.size },
+                          { source: node.id, target: Math.round(Math.random() * (node.id-2) + 1), distance: (Math.random() * 10 + 1) + node.size }]
+      });
+    }
+
+    //
+
+    function removeNode(node) {
+      let { nodes, links } = Graph.graphData();
+      links = links.filter(l => l.source !== node && l.target !== node); // Remove links attached to node
+      nodes.splice(node.id, 1); // Remove node
+      nodes.forEach((n, idx) => { n.id = idx; }); // Reset node ids to array index
+      Graph.graphData({ nodes, links });
+    }
+
+    function pumpNode(node, strength) {
+      
+    }
+
+    // camera orbit
+    let angle = 0;
+    const distance = 250;
+    setInterval(() => {
+      Graph.cameraPosition({
+        x: distance * Math.sin(angle),
+        z: distance * Math.cos(angle)
+      });
+      angle += Math.PI / 300;
+    }, 10);
+
+
+  </script>
+</body>
